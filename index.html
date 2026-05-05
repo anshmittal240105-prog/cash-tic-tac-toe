@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cash Tac Toe</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- In-page push: right top -->
+    <script>(function(s){s.dataset.zone='10966057',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+    <!-- In-page push: right bottom -->
+    <script>(function(s){s.dataset.zone='10968167',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+    <!-- In-page push: left top -->
+    <script>(function(s){s.dataset.zone='10968170',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+    <script src="//libtl.com/sdk.js" data-zone="10966123" data-sdk="show_10966123"></script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="login-active">
+    <main class="app-shell">
+      <section class="login-panel" id="loginView">
+        <div class="login-box">
+          <p class="eyebrow">Cash Tac Toe</p>
+          <h1>Phone Login</h1>
+          <div class="telegram-login-card hidden" id="telegramLoginCard">
+            <span>Telegram Mini App</span>
+            <strong id="telegramUserName">Telegram Player</strong>
+            <small>Continue with your Telegram profile.</small>
+            <button class="primary-button" data-action="telegram-login">Continue With Telegram</button>
+          </div>
+          <div class="input-row">
+            <input id="phoneInput" type="tel" inputmode="numeric" maxlength="10" placeholder="Enter phone number" />
+            <input id="referralInput" maxlength="12" placeholder="Referral code optional" />
+            <button class="primary-button" data-action="phone-login">Continue</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">Tic Tac Toe Arena</p>
+          <h1>Cash Tac Toe</h1>
+        </div>
+        <div class="player-strip">
+          <div class="wallet">
+            <span>Phone</span>
+            <strong id="playerPhone">-</strong>
+          </div>
+          <div class="wallet">
+            <span>Wallet</span>
+            <strong id="walletBalance">Rs 0</strong>
+          </div>
+          <div class="wallet">
+            <span>Plan</span>
+            <strong id="subscriptionBadge">Free</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="home-panel" id="homeView">
+        <button class="home-profile-card" data-action="profile-page">
+          <span class="home-avatar" id="homeAvatar">--</span>
+          <span class="home-profile-copy">
+            <strong id="homePlayerName">Player</strong>
+            <small id="homePlayerMeta">Tap for full profile</small>
+          </span>
+          <span class="home-wallet-chip" data-action="wallet-page">
+            <small>Wallet</small>
+            <strong id="homeWalletChip">Rs 0</strong>
+          </span>
+        </button>
+        <div class="home-stats-grid">
+          <div class="home-stat-banner">
+            <span>Total Games</span>
+            <strong id="homeTotalGames">0</strong>
+          </div>
+          <div class="home-stat-banner">
+            <span>Won</span>
+            <strong id="homeGamesWon">0</strong>
+          </div>
+          <div class="home-stat-banner">
+            <span>Lost</span>
+            <strong id="homeGamesLost">0</strong>
+          </div>
+          <div class="home-stat-banner">
+            <span>Money Won</span>
+            <strong id="homeMoneyWon">Rs 0</strong>
+          </div>
+        </div>
+        <div class="mode-grid">
+          <button class="mode-card" data-action="ai-menu">
+            Play With AI
+          </button>
+          <button class="mode-card" data-action="real-menu">
+            Real Player
+          </button>
+          <button class="mode-card" data-action="referral-page">
+            Referral
+          </button>
+          <button class="mode-card" data-action="subscription-page">
+            Subscription
+          </button>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="control-panel">
+          <div class="nav-actions">
+            <button class="ghost-button" id="backButton">Back</button>
+            <button class="ghost-button" id="homeButton">Home</button>
+          </div>
+          <div id="menuPanel"></div>
+        </aside>
+
+        <section class="game-panel">
+          <div class="status-strip">
+            <div>
+              <span id="modeLabel">Choose a mode</span>
+              <strong id="statusText">Ready when you are.</strong>
+            </div>
+            <button class="ghost-button compact" id="resetButton">Reset Match</button>
+          </div>
+
+          <div class="board-wrap">
+            <div class="board" id="board" aria-label="Tic tac toe board"></div>
+          </div>
+
+          <div class="match-details" id="matchDetails">
+            Select a mode to begin.
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <div class="bottom-ad-space" id="bottomAdSpace" aria-label="Bottom banner ad space"></div>
+
+    <div class="modal hidden" id="modal" role="dialog" aria-modal="true">
+      <div class="modal-box">
+        <h2 id="modalTitle"></h2>
+        <div id="modalText"></div>
+        <div class="modal-actions" id="modalActions"></div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
