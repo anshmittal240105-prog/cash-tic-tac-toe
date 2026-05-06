@@ -111,6 +111,7 @@ const state = {
   aiAdHadFocusAway: false,
   aiAdGateTimer: null,
   aiAdGateActive: false,
+  aiAdGateRequired: false,
   aiAdSecondsLeft: 0,
 };
 
@@ -458,6 +459,10 @@ function resetBoard() {
 }
 
 function startAiMatch(push = true) {
+  if (state.aiAdGateRequired) {
+    showAiAdRequiredModal();
+    return;
+  }
   if (push && state.currentRoute !== "ai") state.routeHistory.push(state.currentRoute);
   closeModal();
   document.body.classList.remove("home-active");
@@ -619,6 +624,7 @@ function finishAi(result) {
     ]);
     return;
   }
+  state.aiAdGateRequired = true;
   showModal("Watch ad to continue", `${reason} Watch the ad to play again.`, [
     ["Watch Ad", openAiDirectLinkAd, "primary-button"],
     ["Home", showHome, "ghost-button"],
@@ -630,7 +636,7 @@ function hasAdFreeAi() {
 }
 
 function openAiDirectLinkAd() {
-  cancelAiAdGate();
+  stopAiAdGateTimer();
   state.aiAdHadFocusAway = false;
   const opened = window.open(AI_DIRECT_LINK_AD_URL, "_blank", "noopener,noreferrer");
   if (!opened) {
@@ -663,30 +669,45 @@ function showAiAdReturnGate(secondsLeft) {
 function renderAiAdReturnGate(secondsLeft) {
   if (!state.aiAdGateActive) return;
   if (secondsLeft > 0 || !state.aiAdHadFocusAway) {
-    showModal("Watch full ad to continue", state.aiAdHadFocusAway
-      ? `Return after the ad. Continue unlocks in ${Math.max(0, secondsLeft)} seconds.`
-      : "The ad opened in a new tab. Watch it first, then come back here.", [
+    const seconds = Math.max(0, secondsLeft);
+    const message = state.aiAdHadFocusAway
+      ? `Return after the ad. Continue unlocks in ${seconds} seconds.`
+      : `The ad opened in a new tab. Switch to it now. Continue unlocks in ${seconds} seconds after you return.`;
+    showModal("Watch full ad to continue", message, [
       ["Open Ad Again", openAiDirectLinkAd, "primary-button"],
-      ["Home", () => {
-        cancelAiAdGate();
-        showHome();
-      }, "ghost-button"],
+      ["Home", showHome, "ghost-button"],
     ]);
     return;
   }
 
-  cancelAiAdGate();
+  completeAiAdGate();
   showModal("Ad completed", "You can continue playing now.", [
     ["Play Again", startAiMatch, "primary-button"],
     ["Home", showHome, "ghost-button"],
   ]);
 }
 
-function cancelAiAdGate() {
+function showAiAdRequiredModal() {
+  if (state.aiAdGateActive) {
+    renderAiAdReturnGate(state.aiAdSecondsLeft);
+    return;
+  }
+  showModal("Watch ad to continue", "Complete the ad from your last AI match before starting another AI game.", [
+    ["Watch Ad", openAiDirectLinkAd, "primary-button"],
+    ["Home", showHome, "ghost-button"],
+  ]);
+}
+
+function stopAiAdGateTimer() {
   if (state.aiAdGateTimer) clearInterval(state.aiAdGateTimer);
   state.aiAdGateTimer = null;
   state.aiAdGateActive = false;
   state.aiAdSecondsLeft = 0;
+}
+
+function completeAiAdGate() {
+  stopAiAdGateTimer();
+  state.aiAdGateRequired = false;
 }
 
 function finishPlayerMatch(result) {
