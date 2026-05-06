@@ -677,9 +677,19 @@ function renderAiAdReturnGate(secondsLeft) {
   if (!state.aiAdGateActive) return;
   if (secondsLeft > 0 || !state.aiAdHadFocusAway) {
     const seconds = Math.max(0, secondsLeft);
-    const message = state.aiAdHadFocusAway
-      ? `Return after the ad. Continue unlocks in ${seconds} seconds.`
-      : `The ad opened in a new tab. Switch to it now. Continue unlocks in ${seconds} seconds after you return.`;
+    if (state.aiAdHadFocusAway) {
+      showModalHtml("Watch full ad to continue", `
+        <p>You returned to the game. ${seconds} seconds are still left, so open the ad again to finish.</p>
+        <div class="modal-actions inline-actions">
+          <a class="primary-button link-button" id="aiWatchAdLink" href="${AI_DIRECT_LINK_AD_URL}" target="_blank" rel="noopener noreferrer">Open Ad Again (${seconds}s)</a>
+          <button class="ghost-button" id="aiAdHomeButton">Home</button>
+        </div>
+      `, []);
+      document.querySelector("#aiWatchAdLink")?.addEventListener("click", () => showAiAdReturnGate(state.aiAdSecondsLeft));
+      document.querySelector("#aiAdHomeButton")?.addEventListener("click", showHome);
+      return;
+    }
+    const message = `The ad opened in a new tab. Switch to it now. Continue unlocks in ${seconds} seconds after you return.`;
     showModal("Watch full ad to continue", message, [
       [`${seconds}s`, () => {}, "primary-button disabled-button"],
       ["Home", showHome, "ghost-button"],
@@ -1596,7 +1606,11 @@ document.addEventListener("visibilitychange", () => {
 
 window.addEventListener("focus", () => {
   syncWalletApprovals({ silent: true });
-  if (state.aiAdGateActive) renderAiAdReturnGate(state.aiAdSecondsLeft);
+  if (state.aiAdGateActive) {
+    if (state.aiAdGateTimer) clearInterval(state.aiAdGateTimer);
+    state.aiAdGateTimer = null;
+    renderAiAdReturnGate(state.aiAdSecondsLeft);
+  }
 });
 
 window.addEventListener("blur", () => {
