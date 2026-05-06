@@ -20,13 +20,11 @@ const modalTitle = document.querySelector("#modalTitle");
 const modalText = document.querySelector("#modalText");
 const modalActions = document.querySelector("#modalActions");
 const backButton = document.querySelector("#backButton");
-const bottomAdSpace = document.querySelector("#bottomAdSpace");
 const telegramLoginCard = document.querySelector("#telegramLoginCard");
 const telegramUserName = document.querySelector("#telegramUserName");
 
 const WALLET_SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycby3Kmgy49kIFJiCfiB8Z0SAeunqeHaLd5fynvL3W3zC6p-k0qHWCIW6Kcp2XR_PuG_BOg/exec";
 const WALLET_SYNC_INTERVAL_MS = 15000;
-const TELEGRAM_AD_FUNCTION = "show_10966123";
 const tgWebApp = window.Telegram?.WebApp || null;
 const subscriptionPlans = {
   FREE: {
@@ -36,7 +34,6 @@ const subscriptionPlans = {
     aiMercyEvery: 30,
     referralReward: 10,
     platformFeePercent: 10,
-    ads: "Standard ad experience",
     perks: ["Standard matchmaking access", "10% platform fee", "Rs 10 referral estimate"],
   },
   VIP: {
@@ -46,8 +43,7 @@ const subscriptionPlans = {
     aiMercyEvery: 20,
     referralReward: 15,
     platformFeePercent: 8,
-    ads: "Ad-free AI games",
-    perks: ["Ad-free AI games", "Priority arena access", "8% platform fee", "Rs 15 referral estimate", "VIP badge"],
+    perks: ["Priority arena access", "8% platform fee", "Rs 15 referral estimate", "VIP badge"],
   },
   PREMIUM: {
     name: "Premium",
@@ -56,8 +52,7 @@ const subscriptionPlans = {
     aiMercyEvery: 10,
     referralReward: 25,
     platformFeePercent: 5,
-    ads: "Ad-free AI games",
-    perks: ["Ad-free AI games", "Premium arena access", "5% platform fee", "Rs 25 referral estimate", "Premium badge"],
+    perks: ["Premium arena access", "5% platform fee", "Rs 25 referral estimate", "Premium badge"],
   },
 };
 const avatarOptions = [
@@ -610,46 +605,11 @@ function finishAi(result) {
     return;
   }
   const reason = result.mark === "draw" ? "The match was drawn." : "The AI won.";
-  setStatus("Play With AI", `${reason} Watch the ad to continue.`);
-  if (hasAdFreeAi()) {
-    showModal("Ad-free AI", `${reason} Your subscription keeps AI games ad-free.`, [
-      ["Play Again", startAiMatch, "primary-button"],
-      ["Home", showHome, "ghost-button"],
-    ]);
-    return;
-  }
-  showAdModal();
-}
-
-function hasAdFreeAi() {
-  return ["VIP", "PREMIUM"].includes(getActivePlanKey());
-}
-
-function requestTelegramMiniAd() {
-  if (!isTelegramMiniApp()) return;
-  const showAd = window[TELEGRAM_AD_FUNCTION];
-  if (typeof showAd !== "function") return;
-  try {
-    const result = showAd({
-      type: "inApp",
-      inAppSettings: {
-        frequency: 2,
-        capping: 0.1,
-        interval: 30,
-        timeout: 5,
-        everyPage: false,
-      },
-    });
-    if (result && typeof result.catch === "function") result.catch(() => {});
-  } catch {
-    // The ad SDK may be unavailable in normal browser previews.
-  }
-}
-
-function requestAiAdBreak() {
-  if (isTelegramMiniApp()) {
-    requestTelegramMiniAd();
-  }
+  setStatus("Play With AI", reason);
+  showModal("Match over", reason, [
+    ["Play Again", startAiMatch, "primary-button"],
+    ["Home", showHome, "ghost-button"],
+  ]);
 }
 
 function finishPlayerMatch(result) {
@@ -695,30 +655,6 @@ function resolveDraw(choice) {
     ["Home", showHome, "primary-button"],
     ["New Match", showRealMenu, "ghost-button"],
   ]);
-}
-
-function showAdModal() {
-  let seconds = 5;
-  requestAiAdBreak();
-  showModalHtml("Sponsored break", `
-    <p>Ad ends in ${seconds} seconds.</p>
-    <div class="ad-break-box" id="aiBreakAd"><div class="ad-placeholder">Sponsored break</div></div>
-  `, []);
-  const timer = setInterval(() => {
-    seconds -= 1;
-    const text = modalText.querySelector("p");
-    if (text) text.textContent = `Ad ends in ${seconds} seconds.`;
-    if (seconds === 0) {
-      clearInterval(timer);
-      modalText.innerHTML = `
-        <p>Ad complete. You can continue.</p>
-        <div class="ad-break-box" id="aiBreakAdComplete"><div class="ad-placeholder">Sponsored break complete</div></div>
-      `;
-      modalActions.innerHTML = "";
-      modalActions.append(makeAction("Play Again", startAiMatch, "primary-button"));
-      modalActions.append(makeAction("Home", showHome, "ghost-button"));
-    }
-  }, 1000);
 }
 
 function restartCurrentMatch() {
@@ -845,7 +781,7 @@ function renderAiMenu() {
     <div class="option-list">
       <button class="option-button" data-action="start-ai">
         <strong>Start AI Match</strong>
-        <small>Win Rs 10. If AI wins or draw happens, a simulated ad plays.</small>
+        <small>Win Rs 10 when you beat the AI.</small>
       </button>
     </div>
   `;
@@ -1005,11 +941,6 @@ function closeModal() {
   modal.classList.add("hidden");
 }
 
-function renderBottomBannerAd() {
-  if (!bottomAdSpace) return;
-  bottomAdSpace.innerHTML = `<div class="ad-placeholder">Bottom banner ad</div>`;
-}
-
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -1156,7 +1087,7 @@ function showSubscriptionPage() {
         <div class="wallet-panel"><span>Wallet Balance</span><strong>${formatRs(state.wallet)}</strong></div>
         <div class="wallet-panel"><span>Arena Access</span><strong>${escapeHtml(active.name)}</strong></div>
         <div class="wallet-panel"><span>Cash Fee</span><strong>${active.platformFeePercent}%</strong></div>
-        <div class="wallet-panel"><span>Ads</span><strong>${escapeHtml(active.ads)}</strong></div>
+        <div class="wallet-panel"><span>Referral Reward</span><strong>${formatRs(active.referralReward)}</strong></div>
       </div>
       <div class="plan-grid">${cards}</div>
     </div>
@@ -1566,6 +1497,5 @@ window.addEventListener("focus", () => {
 renderBoard();
 updateWallet();
 renderPlayer();
-renderBottomBannerAd();
 initTelegramMiniApp();
 loadSession();
