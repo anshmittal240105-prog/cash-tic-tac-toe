@@ -626,25 +626,26 @@ function finishAi(result) {
     return;
   }
   state.aiAdGateRequired = true;
-  showModal("Watch ad to continue", `${reason} Watch the ad to play again.`, [
-    ["Watch Ad", openAiDirectLinkAd, "primary-button"],
-    ["Home", showHome, "ghost-button"],
-  ]);
+  showAiWatchAdModal(`${reason} Watch the ad to play again.`);
 }
 
 function hasAdFreeAi() {
   return ["VIP", "PREMIUM"].includes(getActivePlanKey());
 }
 
-function openAiDirectLinkAd() {
-  const opened = window.open(AI_DIRECT_LINK_AD_URL, "_blank", "noopener,noreferrer");
-  if (!opened) {
-    showModal("Allow ad window", "Your browser blocked the ad window. Allow pop-ups for this site, then open the ad again.", [
-      ["Open Ad Again", openAiDirectLinkAd, "primary-button"],
-      ["Home", showHome, "ghost-button"],
-    ]);
-    return;
-  }
+function showAiWatchAdModal(message) {
+  showModalHtml("Watch ad to continue", `
+    <p>${escapeHtml(message)}</p>
+    <div class="modal-actions inline-actions">
+      <a class="primary-button link-button" id="aiWatchAdLink" href="${AI_DIRECT_LINK_AD_URL}" target="_blank" rel="noopener noreferrer">Watch Ad</a>
+      <button class="ghost-button" id="aiAdHomeButton">Home</button>
+    </div>
+  `, []);
+  document.querySelector("#aiWatchAdLink")?.addEventListener("click", beginAiDirectLinkAdGate);
+  document.querySelector("#aiAdHomeButton")?.addEventListener("click", showHome);
+}
+
+function beginAiDirectLinkAdGate() {
   if (!state.aiAdGateActive) {
     state.aiAdHadFocusAway = false;
     showAiAdReturnGate(AI_DIRECT_LINK_MIN_SECONDS);
@@ -698,10 +699,7 @@ function showAiAdRequiredModal() {
     renderAiAdReturnGate(state.aiAdSecondsLeft);
     return;
   }
-  showModal("Watch ad to continue", "Complete the ad from your last AI match before starting another AI game.", [
-    ["Watch Ad", openAiDirectLinkAd, "primary-button"],
-    ["Home", showHome, "ghost-button"],
-  ]);
+  showAiWatchAdModal("Complete the ad from your last AI match before starting another AI game.");
 }
 
 function stopAiAdGateTimer() {

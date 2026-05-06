@@ -677,6 +677,12 @@ body:not(.login-active) .login-panel {
   transform: none;
 }
 
+.link-button {
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+}
+
 .ghost-button {
   width: 100%;
   background: transparent;
