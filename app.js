@@ -866,6 +866,7 @@ function showLoginScreen() {
     otpInput.classList.add("hidden");
   }
   verifyOtpButton?.classList.add("hidden");
+  resetRecaptchaVerifier();
   setOtpStatus("");
 }
 
@@ -876,10 +877,23 @@ function setOtpStatus(message) {
 function ensureRecaptchaVerifier() {
   if (!firebaseAuth) return null;
   if (window.cashTacToeRecaptchaVerifier) return window.cashTacToeRecaptchaVerifier;
+  const container = document.querySelector("#recaptcha-container");
+  if (container) container.innerHTML = "";
   window.cashTacToeRecaptchaVerifier = new window.firebase.auth.RecaptchaVerifier("recaptcha-container", {
     size: "invisible",
   });
   return window.cashTacToeRecaptchaVerifier;
+}
+
+function resetRecaptchaVerifier() {
+  try {
+    window.cashTacToeRecaptchaVerifier?.clear?.();
+  } catch {
+    // Firebase can throw if the verifier is already cleared.
+  }
+  window.cashTacToeRecaptchaVerifier = null;
+  const container = document.querySelector("#recaptcha-container");
+  if (container) container.innerHTML = "";
 }
 
 async function loginWithPhone() {
@@ -906,8 +920,7 @@ async function loginWithPhone() {
     setOtpStatus("OTP sent. Enter the code to verify.");
   } catch (error) {
     setOtpStatus("");
-    window.cashTacToeRecaptchaVerifier?.clear?.();
-    window.cashTacToeRecaptchaVerifier = null;
+    resetRecaptchaVerifier();
     showModal("OTP failed", getFirebaseAuthMessage(error), [
       ["OK", closeModal, "primary-button"],
     ]);
