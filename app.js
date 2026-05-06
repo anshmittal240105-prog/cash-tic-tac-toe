@@ -113,6 +113,7 @@ const state = {
   aiAdGateActive: false,
   aiAdGateRequired: false,
   aiAdSecondsLeft: 0,
+  aiAdStartedAt: null,
 };
 
 const routes = {
@@ -636,8 +637,6 @@ function hasAdFreeAi() {
 }
 
 function openAiDirectLinkAd() {
-  stopAiAdGateTimer();
-  state.aiAdHadFocusAway = false;
   const opened = window.open(AI_DIRECT_LINK_AD_URL, "_blank", "noopener,noreferrer");
   if (!opened) {
     showModal("Allow ad window", "Your browser blocked the ad window. Allow pop-ups for this site, then open the ad again.", [
@@ -646,19 +645,26 @@ function openAiDirectLinkAd() {
     ]);
     return;
   }
-  showAiAdReturnGate(AI_DIRECT_LINK_MIN_SECONDS);
+  if (!state.aiAdGateActive) {
+    state.aiAdHadFocusAway = false;
+    showAiAdReturnGate(AI_DIRECT_LINK_MIN_SECONDS);
+    return;
+  }
+  renderAiAdReturnGate(state.aiAdSecondsLeft);
 }
 
 function showAiAdReturnGate(secondsLeft) {
   if (state.aiAdGateTimer) clearInterval(state.aiAdGateTimer);
   state.aiAdGateActive = true;
+  state.aiAdStartedAt = Date.now();
   state.aiAdSecondsLeft = secondsLeft;
   renderAiAdReturnGate(secondsLeft);
   state.aiAdGateTimer = setInterval(() => {
-    secondsLeft -= 1;
-    state.aiAdSecondsLeft = Math.max(0, secondsLeft);
-    renderAiAdReturnGate(secondsLeft);
-    if (secondsLeft <= 0) {
+    const elapsed = Math.floor((Date.now() - state.aiAdStartedAt) / 1000);
+    const remaining = Math.max(0, AI_DIRECT_LINK_MIN_SECONDS - elapsed);
+    state.aiAdSecondsLeft = remaining;
+    renderAiAdReturnGate(remaining);
+    if (remaining <= 0) {
       clearInterval(state.aiAdGateTimer);
       state.aiAdGateTimer = null;
       renderAiAdReturnGate(0);
@@ -674,7 +680,7 @@ function renderAiAdReturnGate(secondsLeft) {
       ? `Return after the ad. Continue unlocks in ${seconds} seconds.`
       : `The ad opened in a new tab. Switch to it now. Continue unlocks in ${seconds} seconds after you return.`;
     showModal("Watch full ad to continue", message, [
-      ["Open Ad Again", openAiDirectLinkAd, "primary-button"],
+      [`Open Ad Again (${seconds}s)`, openAiDirectLinkAd, "primary-button"],
       ["Home", showHome, "ghost-button"],
     ]);
     return;
@@ -703,6 +709,7 @@ function stopAiAdGateTimer() {
   state.aiAdGateTimer = null;
   state.aiAdGateActive = false;
   state.aiAdSecondsLeft = 0;
+  state.aiAdStartedAt = null;
 }
 
 function completeAiAdGate() {
