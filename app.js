@@ -15,6 +15,9 @@ const homeGamesWon = document.querySelector("#homeGamesWon");
 const homeGamesLost = document.querySelector("#homeGamesLost");
 const homeMoneyWon = document.querySelector("#homeMoneyWon");
 const homeWalletChip = document.querySelector("#homeWalletChip");
+const otpInput = document.querySelector("#otpInput");
+const verifyOtpButton = document.querySelector("#verifyOtpButton");
+const otpStatusText = document.querySelector("#otpStatusText");
 const modal = document.querySelector("#modal");
 const modalTitle = document.querySelector("#modalTitle");
 const modalText = document.querySelector("#modalText");
@@ -27,6 +30,18 @@ const WALLET_SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycby3Kmgy49
 const WALLET_SYNC_INTERVAL_MS = 15000;
 const AI_DIRECT_LINK_AD_URL = "https://omg10.com/4/10970664";
 const AI_DIRECT_LINK_MIN_SECONDS = 15;
+const firebaseConfig = {
+  apiKey: "AIzaSyC8wJy6LJWtLKfsBiJY1T3uqSMzbXUp7pY",
+  authDomain: "cash-tic-tac-toe-514a8.firebaseapp.com",
+  projectId: "cash-tic-tac-toe-514a8",
+  storageBucket: "cash-tic-tac-toe-514a8.firebasestorage.app",
+  messagingSenderId: "323871057141",
+  appId: "1:323871057141:web:0e2ae14d4cd0e4bfb711bc",
+  measurementId: "G-YZRKX2CWDW",
+};
+const firebaseApp = window.firebase?.apps?.length ? window.firebase.app() : window.firebase?.initializeApp(firebaseConfig);
+const firebaseAuth = firebaseApp ? window.firebase.auth() : null;
+const firebaseDb = firebaseApp ? window.firebase.firestore() : null;
 const tgWebApp = window.Telegram?.WebApp || null;
 const subscriptionPlans = {
   FREE: {
@@ -103,6 +118,8 @@ const state = {
   appliedWalletApprovals: [],
   walletSyncTimer: null,
   walletSyncInFlight: false,
+  otpConfirmation: null,
+  otpPhone: "",
   currentRoute: "login",
   routeHistory: [],
   referralEvents: [],
@@ -221,7 +238,7 @@ function loadSession() {
   }
 }
 
-function saveSession() {
+async function saveSession() {
   if (!state.user) return;
   state.user.profile = state.profile;
   state.user.wallet = state.wallet;
@@ -232,6 +249,7 @@ function saveSession() {
   state.user.walletRequests = state.walletRequests;
   state.user.appliedWalletApprovals = state.appliedWalletApprovals;
   localStorage.setItem("cashTacToeUser", JSON.stringify(state.user));
+  saveUserToFirestore();
 }
 
 function formatRs(amount) {
@@ -651,18 +669,24 @@ function beginAiDirectLinkAdGate() {
     showAiAdReturnGate(AI_DIRECT_LINK_MIN_SECONDS);
     return;
   }
-  renderAiAdReturnGate(state.aiAdSecondsLeft);
+  resumeAiAdGateCountdown();
 }
 
 function showAiAdReturnGate(secondsLeft) {
   if (state.aiAdGateTimer) clearInterval(state.aiAdGateTimer);
   state.aiAdGateActive = true;
-  state.aiAdStartedAt = Date.now();
   state.aiAdSecondsLeft = secondsLeft;
   renderAiAdReturnGate(secondsLeft);
+  resumeAiAdGateCountdown();
+}
+
+function resumeAiAdGateCountdown() {
+  if (!state.aiAdGateActive || state.aiAdGateTimer || state.aiAdSecondsLeft <= 0) return;
+  state.aiAdStartedAt = Date.now();
+  const startingSeconds = state.aiAdSecondsLeft;
   state.aiAdGateTimer = setInterval(() => {
     const elapsed = Math.floor((Date.now() - state.aiAdStartedAt) / 1000);
-    const remaining = Math.max(0, AI_DIRECT_LINK_MIN_SECONDS - elapsed);
+    const remaining = Math.max(0, startingSeconds - elapsed);
     state.aiAdSecondsLeft = remaining;
     renderAiAdReturnGate(remaining);
     if (remaining <= 0) {
@@ -821,33 +845,184 @@ function showHome(resetHistory = true) {
   menuPanel.innerHTML = "";
 }
 
-function loginWithPhone() {
+function showLoginScreen() {
+  closeModal();
+  document.body.classList.add("login-active");
+  document.body.classList.remove("home-active");
+  setRoute("login");
+  state.routeHistory = [];
+  state.mode = "idle";
+  state.match = null;
+  state.locked = true;
+  state.board = Array(9).fill("");
+  renderBoard();
+  setStatus("Choose a mode", "Ready when you are.");
+  matchDetails.textContent = "Select a mode to begin.";
+  menuPanel.innerHTML = "";
+  document.querySelector("#phoneInput").value = "";
+  document.querySelector("#referralInput").value = "";
+  if (otpInput) {
+    otpInput.value = "";
+    otpInput.classList.add("hidden");
+  }
+  verifyOtpButton?.classList.add("hidden");
+  setOtpStatus("");
+}
+
+function setOtpStatus(message) {
+  if (otpStatusText) otpStatusText.textContent = message || "";
+}
+
+function ensureRecaptchaVerifier() {
+  if (!firebaseAuth) return null;
+  if (window.cashTacToeRecaptchaVerifier) return window.cashTacToeRecaptchaVerifier;
+  window.cashTacToeRecaptchaVerifier = new window.firebase.auth.RecaptchaVerifier("recaptcha-container", {
+    size: "invisible",
+  });
+  return window.cashTacToeRecaptchaVerifier;
+}
+
+async function loginWithPhone() {
   const phone = document.querySelector("#phoneInput")?.value.replace(/\D/g, "");
-  const invitedBy = document.querySelector("#referralInput")?.value.trim().toUpperCase();
   if (!phone || phone.length !== 10) {
     showModal("Phone number needed", "Enter a valid 10 digit phone number to continue.", [
       ["OK", closeModal, "primary-button"],
     ]);
     return;
   }
-  state.user = {
+  if (!firebaseAuth) {
+    showModal("Firebase not loaded", "Firebase login is not ready. Check your internet connection and try again.", [
+      ["OK", closeModal, "primary-button"],
+    ]);
+    return;
+  }
+  try {
+    setOtpStatus("Sending OTP...");
+    const verifier = ensureRecaptchaVerifier();
+    state.otpPhone = phone;
+    state.otpConfirmation = await firebaseAuth.signInWithPhoneNumber(`+91${phone}`, verifier);
+    otpInput?.classList.remove("hidden");
+    verifyOtpButton?.classList.remove("hidden");
+    setOtpStatus("OTP sent. Enter the code to verify.");
+  } catch (error) {
+    setOtpStatus("");
+    window.cashTacToeRecaptchaVerifier?.clear?.();
+    window.cashTacToeRecaptchaVerifier = null;
+    showModal("OTP failed", getFirebaseAuthMessage(error), [
+      ["OK", closeModal, "primary-button"],
+    ]);
+  }
+}
+
+async function verifyPhoneOtp() {
+  const otp = otpInput?.value.replace(/\D/g, "");
+  const invitedBy = document.querySelector("#referralInput")?.value.trim().toUpperCase();
+  if (!state.otpConfirmation || !state.otpPhone) {
+    showModal("OTP needed", "Send OTP first, then enter the verification code.", [
+      ["OK", closeModal, "primary-button"],
+    ]);
+    return;
+  }
+  if (!otp || otp.length < 6) {
+    showModal("OTP needed", "Enter the 6 digit OTP.", [
+      ["OK", closeModal, "primary-button"],
+    ]);
+    return;
+  }
+  try {
+    setOtpStatus("Verifying OTP...");
+    const credential = await state.otpConfirmation.confirm(otp);
+    await completeFirebaseLogin(credential.user, invitedBy);
+    setOtpStatus("");
+  } catch (error) {
+    setOtpStatus("");
+    showModal("Wrong OTP", getFirebaseAuthMessage(error), [
+      ["Try Again", closeModal, "primary-button"],
+    ]);
+  }
+}
+
+async function completeFirebaseLogin(firebaseUser, invitedBy = "") {
+  const phone = String(firebaseUser.phoneNumber || "").replace("+91", "").replace(/\D/g, "").slice(-10);
+  const savedUser = await loadUserFromFirestore(firebaseUser.uid);
+  state.user = savedUser || {
+    uid: firebaseUser.uid,
     phone,
+    phoneNumber: firebaseUser.phoneNumber,
     invitedBy,
     referralCode: makeReferralCode(phone),
+    createdAt: new Date().toISOString(),
   };
-  state.profile = normalizeProfile({}, phone);
-  state.wallet = 0;
-  state.stats = normalizeStats();
-  state.referrals = 0;
-  state.referralEvents = [];
-  state.walletRequests = [];
-  state.appliedWalletApprovals = [];
+  state.user.uid = firebaseUser.uid;
+  state.user.phone = state.user.phone || phone;
+  state.user.phoneNumber = firebaseUser.phoneNumber;
+  state.profile = normalizeProfile(state.user.profile, state.user.phone);
+  state.wallet = Number(state.user.wallet || 0);
+  state.subscription = normalizeSubscription(state.user.subscription);
+  state.stats = normalizeStats(state.user.stats);
+  state.referrals = Number(state.user.referrals || 0);
+  state.referralEvents = Array.isArray(state.user.referralEvents) ? state.user.referralEvents : [];
+  state.walletRequests = Array.isArray(state.user.walletRequests) ? state.user.walletRequests : [];
+  state.appliedWalletApprovals = Array.isArray(state.user.appliedWalletApprovals) ? state.user.appliedWalletApprovals : [];
+  state.otpConfirmation = null;
+  state.otpPhone = "";
   updateWallet();
   renderPlayer();
   saveSession();
   startWalletAutoSync();
   syncWalletApprovals({ silent: true });
   showHome();
+}
+
+async function loadUserFromFirestore(uid) {
+  if (!firebaseDb || !uid) return null;
+  try {
+    const doc = await firebaseDb.collection("users").doc(uid).get();
+    return doc.exists ? doc.data() : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveUserToFirestore() {
+  if (!firebaseDb || !state.user?.uid) return;
+  firebaseDb.collection("users").doc(state.user.uid).set(state.user, { merge: true }).catch(() => {});
+}
+
+async function logoutUser() {
+  await saveSession();
+  try {
+    await firebaseAuth?.signOut();
+  } catch {
+    // Local logout should still work if Firebase sign-out fails.
+  }
+  localStorage.removeItem("cashTacToeUser");
+  state.user = null;
+  state.profile = { name: "", avatar: "XO", avatarImage: "" };
+  state.subscription = { plan: "FREE", expiresAt: null, purchasedAt: null };
+  state.stats = normalizeStats();
+  state.wallet = 0;
+  state.referrals = 0;
+  state.referralEvents = [];
+  state.walletRequests = [];
+  state.appliedWalletApprovals = [];
+  state.otpConfirmation = null;
+  state.otpPhone = "";
+  if (state.walletSyncTimer) clearInterval(state.walletSyncTimer);
+  state.walletSyncTimer = null;
+  completeAiAdGate();
+  updateWallet();
+  renderPlayer();
+  showLoginScreen();
+}
+
+function getFirebaseAuthMessage(error) {
+  const code = error?.code || "";
+  if (code.includes("invalid-verification-code")) return "The OTP is incorrect. Please check and try again.";
+  if (code.includes("too-many-requests")) return "Too many OTP attempts. Wait some time and try again.";
+  if (code.includes("quota-exceeded")) return "Firebase SMS quota is finished for today.";
+  if (code.includes("unauthorized-domain")) return "Add this website domain in Firebase Authentication settings.";
+  return error?.message || "Firebase could not complete phone login right now.";
 }
 
 function loginWithTelegram() {
@@ -1271,6 +1446,7 @@ function showProfilePage() {
     ["Wallet", showWalletPage, "primary-button"],
     ["Subscription", showSubscriptionPage, "ghost-button"],
     ["Referral", showReferralPage, "ghost-button"],
+    ["Logout", logoutUser, "ghost-button"],
     ["Close", closeModal, "ghost-button"],
   ]);
   renderAvatar(document.querySelector("#profileAvatarPreview"));
@@ -1558,6 +1734,7 @@ document.addEventListener("click", (event) => {
     event.stopPropagation();
   }
   if (action === "phone-login") loginWithPhone();
+  if (action === "verify-otp") verifyPhoneOtp();
   if (action === "telegram-login") loginWithTelegram();
   if (action === "referral-page") showReferralPage();
   if (action === "wallet-page") showWalletPage();
@@ -1615,6 +1792,7 @@ window.addEventListener("focus", () => {
 
 window.addEventListener("blur", () => {
   state.aiAdHadFocusAway = true;
+  if (state.aiAdGateActive) resumeAiAdGateCountdown();
 });
 
 renderBoard();

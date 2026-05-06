@@ -25,6 +25,9 @@
     <script>(function(s){s.dataset.zone='10970442',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
     <script>(function(s){s.dataset.zone='10970443',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
     <link rel="stylesheet" href="styles.css" />
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   </head>
   <body class="login-active">
     <main class="app-shell">
@@ -41,7 +44,11 @@
           <div class="input-row">
             <input id="phoneInput" type="tel" inputmode="numeric" maxlength="10" placeholder="Enter phone number" />
             <input id="referralInput" maxlength="12" placeholder="Referral code optional" />
-            <button class="primary-button" data-action="phone-login">Continue</button>
+            <button class="primary-button" data-action="phone-login">Send OTP</button>
+            <input id="otpInput" class="hidden" type="tel" inputmode="numeric" maxlength="6" placeholder="Enter OTP" />
+            <button class="primary-button hidden" id="verifyOtpButton" data-action="verify-otp">Verify OTP</button>
+            <small class="login-note" id="otpStatusText"></small>
+            <div id="recaptcha-container"></div>
           </div>
         </div>
       </section>

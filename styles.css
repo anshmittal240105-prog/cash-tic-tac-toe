@@ -717,6 +717,12 @@ body:not(.login-active) .login-panel {
   box-shadow: 0 0 0 3px rgba(0, 163, 255, 0.12);
 }
 
+.login-note {
+  min-height: 18px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .game-panel {
   min-height: 550px;
   padding: 16px;
