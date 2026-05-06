@@ -27,8 +27,6 @@ const telegramUserName = document.querySelector("#telegramUserName");
 const WALLET_SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycby3Kmgy49kIFJiCfiB8Z0SAeunqeHaLd5fynvL3W3zC6p-k0qHWCIW6Kcp2XR_PuG_BOg/exec";
 const WALLET_SYNC_INTERVAL_MS = 15000;
 const TELEGRAM_AD_FUNCTION = "show_10966123";
-const VIGNETTE_AD_ZONE = "10968186";
-const VIGNETTE_AD_SRC = "https://n6wxm.com/vignette.min.js";
 const tgWebApp = window.Telegram?.WebApp || null;
 const subscriptionPlans = {
   FREE: {
@@ -651,29 +649,6 @@ function requestTelegramMiniAd() {
 function requestAiAdBreak() {
   if (isTelegramMiniApp()) {
     requestTelegramMiniAd();
-    return;
-  }
-  requestVignetteAdBreak();
-}
-
-function requestVignetteAdBreak() {
-  const oldScript = document.querySelector(`[data-ai-vignette-zone="${VIGNETTE_AD_ZONE}"]`);
-  oldScript?.remove();
-
-  try {
-    const script = document.createElement("script");
-    script.dataset.zone = VIGNETTE_AD_ZONE;
-    script.dataset.aiVignetteZone = VIGNETTE_AD_ZONE;
-    script.src = `${VIGNETTE_AD_SRC}?t=${Date.now()}`;
-    script.async = true;
-    script.dataset.cfasync = "false";
-    document.body.appendChild(script);
-
-    setTimeout(() => {
-      script.remove();
-    }, 15000);
-  } catch {
-    // Keep the game playable if the ad network blocks or fails.
   }
 }
 
