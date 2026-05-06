@@ -670,6 +670,13 @@ body:not(.login-active) .login-panel {
   box-shadow: 0 12px 28px rgba(67, 217, 163, 0.14);
 }
 
+.disabled-button,
+.disabled-button:hover {
+  cursor: wait;
+  opacity: 0.82;
+  transform: none;
+}
+
 .ghost-button {
   width: 100%;
   background: transparent;

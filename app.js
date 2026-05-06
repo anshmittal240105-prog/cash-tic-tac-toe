@@ -680,7 +680,7 @@ function renderAiAdReturnGate(secondsLeft) {
       ? `Return after the ad. Continue unlocks in ${seconds} seconds.`
       : `The ad opened in a new tab. Switch to it now. Continue unlocks in ${seconds} seconds after you return.`;
     showModal("Watch full ad to continue", message, [
-      [`Open Ad Again (${seconds}s)`, openAiDirectLinkAd, "primary-button"],
+      [`${seconds}s`, () => {}, "primary-button disabled-button"],
       ["Home", showHome, "ghost-button"],
     ]);
     return;
@@ -1038,6 +1038,7 @@ function makeAction(label, fn, className) {
   const button = document.createElement("button");
   button.className = className;
   button.textContent = label;
+  if (className.includes("disabled-button")) button.disabled = true;
   button.addEventListener("click", fn);
   return button;
 }
