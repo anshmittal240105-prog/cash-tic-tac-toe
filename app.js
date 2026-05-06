@@ -25,6 +25,7 @@ const telegramUserName = document.querySelector("#telegramUserName");
 
 const WALLET_SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycby3Kmgy49kIFJiCfiB8Z0SAeunqeHaLd5fynvL3W3zC6p-k0qHWCIW6Kcp2XR_PuG_BOg/exec";
 const WALLET_SYNC_INTERVAL_MS = 15000;
+const AI_DIRECT_LINK_AD_URL = "https://omg10.com/4/10970664";
 const tgWebApp = window.Telegram?.WebApp || null;
 const subscriptionPlans = {
   FREE: {
@@ -606,7 +607,27 @@ function finishAi(result) {
   }
   const reason = result.mark === "draw" ? "The match was drawn." : "The AI won.";
   setStatus("Play With AI", reason);
-  showModal("Match over", reason, [
+  if (hasAdFreeAi()) {
+    showModal("Match over", reason, [
+      ["Play Again", startAiMatch, "primary-button"],
+      ["Home", showHome, "ghost-button"],
+    ]);
+    return;
+  }
+  showModal("Watch ad to continue", `${reason} Watch the ad to play again.`, [
+    ["Watch Ad", openAiDirectLinkAd, "primary-button"],
+    ["Home", showHome, "ghost-button"],
+  ]);
+}
+
+function hasAdFreeAi() {
+  return ["VIP", "PREMIUM"].includes(getActivePlanKey());
+}
+
+function openAiDirectLinkAd() {
+  const opened = window.open(AI_DIRECT_LINK_AD_URL, "_blank", "noopener,noreferrer");
+  if (!opened) window.location.href = AI_DIRECT_LINK_AD_URL;
+  showModal("Ad opened", "Return here after the ad to continue playing.", [
     ["Play Again", startAiMatch, "primary-button"],
     ["Home", showHome, "ghost-button"],
   ]);
