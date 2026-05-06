@@ -26,6 +26,7 @@ const telegramUserName = document.querySelector("#telegramUserName");
 const WALLET_SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycby3Kmgy49kIFJiCfiB8Z0SAeunqeHaLd5fynvL3W3zC6p-k0qHWCIW6Kcp2XR_PuG_BOg/exec";
 const WALLET_SYNC_INTERVAL_MS = 15000;
 const AI_DIRECT_LINK_AD_URL = "https://omg10.com/4/10970664";
+const AI_DIRECT_LINK_MIN_SECONDS = 15;
 const tgWebApp = window.Telegram?.WebApp || null;
 const subscriptionPlans = {
   FREE: {
@@ -107,6 +108,10 @@ const state = {
   referralEvents: [],
   playerDrawChoice: null,
   opponentDrawChoice: null,
+  aiAdHadFocusAway: false,
+  aiAdGateTimer: null,
+  aiAdGateActive: false,
+  aiAdSecondsLeft: 0,
 };
 
 const routes = {
@@ -625,12 +630,63 @@ function hasAdFreeAi() {
 }
 
 function openAiDirectLinkAd() {
+  cancelAiAdGate();
+  state.aiAdHadFocusAway = false;
   const opened = window.open(AI_DIRECT_LINK_AD_URL, "_blank", "noopener,noreferrer");
-  if (!opened) window.location.href = AI_DIRECT_LINK_AD_URL;
-  showModal("Ad opened", "Return here after the ad to continue playing.", [
+  if (!opened) {
+    showModal("Allow ad window", "Your browser blocked the ad window. Allow pop-ups for this site, then open the ad again.", [
+      ["Open Ad Again", openAiDirectLinkAd, "primary-button"],
+      ["Home", showHome, "ghost-button"],
+    ]);
+    return;
+  }
+  showAiAdReturnGate(AI_DIRECT_LINK_MIN_SECONDS);
+}
+
+function showAiAdReturnGate(secondsLeft) {
+  if (state.aiAdGateTimer) clearInterval(state.aiAdGateTimer);
+  state.aiAdGateActive = true;
+  state.aiAdSecondsLeft = secondsLeft;
+  renderAiAdReturnGate(secondsLeft);
+  state.aiAdGateTimer = setInterval(() => {
+    secondsLeft -= 1;
+    state.aiAdSecondsLeft = Math.max(0, secondsLeft);
+    renderAiAdReturnGate(secondsLeft);
+    if (secondsLeft <= 0) {
+      clearInterval(state.aiAdGateTimer);
+      state.aiAdGateTimer = null;
+      renderAiAdReturnGate(0);
+    }
+  }, 1000);
+}
+
+function renderAiAdReturnGate(secondsLeft) {
+  if (!state.aiAdGateActive) return;
+  if (secondsLeft > 0 || !state.aiAdHadFocusAway) {
+    showModal("Watch full ad to continue", state.aiAdHadFocusAway
+      ? `Return after the ad. Continue unlocks in ${Math.max(0, secondsLeft)} seconds.`
+      : "The ad opened in a new tab. Watch it first, then come back here.", [
+      ["Open Ad Again", openAiDirectLinkAd, "primary-button"],
+      ["Home", () => {
+        cancelAiAdGate();
+        showHome();
+      }, "ghost-button"],
+    ]);
+    return;
+  }
+
+  cancelAiAdGate();
+  showModal("Ad completed", "You can continue playing now.", [
     ["Play Again", startAiMatch, "primary-button"],
     ["Home", showHome, "ghost-button"],
   ]);
+}
+
+function cancelAiAdGate() {
+  if (state.aiAdGateTimer) clearInterval(state.aiAdGateTimer);
+  state.aiAdGateTimer = null;
+  state.aiAdGateActive = false;
+  state.aiAdSecondsLeft = 0;
 }
 
 function finishPlayerMatch(result) {
@@ -1513,6 +1569,11 @@ document.addEventListener("visibilitychange", () => {
 
 window.addEventListener("focus", () => {
   syncWalletApprovals({ silent: true });
+  if (state.aiAdGateActive) renderAiAdReturnGate(state.aiAdSecondsLeft);
+});
+
+window.addEventListener("blur", () => {
+  state.aiAdHadFocusAway = true;
 });
 
 renderBoard();
